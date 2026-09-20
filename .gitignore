@@ -1,0 +1,11 @@
+.build/
+.swiftpm/
+*.xcodeproj
+snapshots/
+.DS_Store
+
+# python bytecode from tools/
+__pycache__/
+
+# session scratch from the claude-watchdog plugin
+.claude/tmp/
