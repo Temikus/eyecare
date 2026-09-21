@@ -64,8 +64,9 @@ let usage = """
       the display is known good; restore is the way out if a knob leaves something stuck.
 
     notes:
-      Properties are runtime-only: a reboot clears everything. Writes do not need sudo on macOS 27
-      (the driver applies them for a normal user); if it ever reports "not privileged", use sudo.
+      Properties are runtime-only: a reboot clears everything. Writes do not need sudo on macOS 26.6
+      or 27 (the driver applies them for a normal user); if it ever reports "not privileged", use
+      sudo.
       --revert-after N restores the previous values after N seconds (and on ^C), so a knob that
       blacks out the panel recovers by itself. Keys marked risky require --revert-after or --force.
       A key the node does not publish yet has no previous value, so pass --revert-to KEY=VALUE to
@@ -527,7 +528,10 @@ func runSnapshot(_ options: Options) throws {
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let data = try encoder.encode(snapshot)
     if let path = options.out {
-        try data.write(to: URL(fileURLWithPath: path))
+        let url = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
         print("wrote \(path)")
     } else {
         print(String(decoding: data, as: UTF8.self))

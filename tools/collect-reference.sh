@@ -20,20 +20,22 @@ name=$(system_profiler SPHardwareDataType -json 2>/dev/null \
     | python3 -c 'import json,sys;print(json.load(sys.stdin)["SPHardwareDataType"][0].get("machine_name",""))' \
     || echo "")
 serial=$(ioreg -l -w0 -c IOPlatformExpertDevice \
-    | sed -n 's/.*"IOPlatformSerialNumber" = "\([^"]*\)".*/\1/p' | head -1)
+    | LC_ALL=C sed -n 's/.*"IOPlatformSerialNumber" = "\([^"]*\)".*/\1/p' | head -1)
 serial="${serial%???}***"
 os="$(sw_vers -productVersion) ($(sw_vers -buildVersion)), Darwin $(uname -r)"
 slug=$(echo "$model" | tr 'A-Z,' 'a-z-')
 out="reference/$slug.md"
 
 # Machine-wide backlight facts live on the backlight device node, not on AppleCLCD2.
+# ioreg dumps raw property data that is not valid UTF-8, so sed must run in the C locale
+# or it aborts with "RE error: illegal byte sequence".
 backlight_scalar() {
-    ioreg -l -w0 | sed -n "s/.*\"$1\" = \\([^,]*\\).*/\\1/p" | head -1
+    ioreg -l -w0 | LC_ALL=C sed -n "s/.*\"$1\" = \\([^,]*\\).*/\\1/p" | head -1
 }
 backlight_present() {
     # No grep -q here: it closes the pipe early and pipefail then reports ioreg's SIGPIPE.
     local hits
-    hits=$(ioreg -l -w0 | grep -c "\"$1\" = <" || true)
+    hits=$(ioreg -l -w0 | LC_ALL=C grep -c "\"$1\" = <" || true)
     [ "$hits" -gt 0 ] && echo "present" || echo "absent"
 }
 le32() {  # little-endian 4-byte ioreg data value, e.g. <0f000000> -> 15
@@ -83,7 +85,7 @@ print(next((n['name'] for n in nodes if n['name']=='disp0'), nodes[0]['name']))"
     echo "| \`backlight-marketing-table\` | $(backlight_present backlight-marketing-table) |"
     echo
     echo "Panel identity: $(ioreg -l -w0 -r -c AppleCLCD2 \
-        | sed -n 's/.*"ProductAttributes"={\([^}]*\)}.*/\1/p' | head -1)"
+        | LC_ALL=C sed -n 's/.*"ProductAttributes"={\([^}]*\)}.*/\1/p' | head -1)"
     echo
     echo "## Capability flags"
     echo
