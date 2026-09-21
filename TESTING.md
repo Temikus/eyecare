@@ -151,8 +151,46 @@ no boot-args set), so it is a separate, bigger experiment - and the hypothesis i
 - Record the machine and panel with each result: what a key does depends on the backlight path, and
   the keys above are unpublished on the IPS panel this plan was written on.
 
+### Measuring with a flicker meter
+
+Learned on the 16" mini-LED (MacBookPro18,1); see [reference/macbookpro18-1.md](reference/macbookpro18-1.md).
+
+- Presence of the PWM frequency at every brightness is expected and proves nothing. Record the
+  meter's duty cycle (or modulation depth) on a full white field instead: on a 2D locally dimmed
+  panel a mixed image sums zones at different duty cycles.
+- Take the duty reading at the panel's peak output first. If peak is well short of 100% duty (38% on
+  the mini-LED), no level-shaped knob (`BLNitsCap`, digital dimming, XDR headroom) can reach
+  continuous drive, and the only thing worth testing is whether a key changes duty *at fixed nits*.
+- To hold a fixed level above the SDR ceiling, drive the panel through its EDR headroom (BetterDisplay
+  direct brightness in nits, Lunar or Vivid XDR brightness) and confirm the driver followed:
+
+  ```sh
+  while true; do
+    pwmctl get IOMFBBrightnessLevel --display disp0 --json \
+      | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["fixedPointValue"])'
+    sleep 1
+  done
+  ```
+
+  `IOMFBBrightnessLevel` tracks the physical target: 64 to 1601 nits on the mini-LED, with plateaus
+  at 1230 and 1601, and a 400 nit ceiling in plain SDR. Pick a plateau, apply the knob, nudge
+  brightness one step, read duty again at the same nits.
+- A `set` line that shows the value moving (`220 -> 150`) and reads back means the driver stored the
+  value. If duty at fixed nits is unchanged, the key is bookkeeping the backlight path does not
+  consult - a firm negative, distinct from `[unchanged: driver ignored it]` or a rejection.
+
 ## Results
 
 | date | machine / panel | key | value | flicker change | notes |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | (meter baseline) | - | ~14 kHz at all levels | White field. Duty 22% at 1230 nits, 38% at 1600 nits (EDR headroom via BetterDisplay). SDR ceiling 400 nits. Peak output is 38% duty, so brightness-shaped knobs cannot reach continuous drive. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `enablePulseWidthMaximization` | `1` | none | Accepted and stored; duty at fixed nits unchanged. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `enableDither`, `uniformity2D` | `false` | none | Both on by default here. Judged against the meter only. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `BLMAHMode`, `BLMAHOutputFreq`, `enableBLMSloper` | various | none | Accepted; no effect on duty. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `BLMVLEDManual` | `150`, `180`, `200`, `240` | none | Stored and read back; duty at 1230 nits unchanged after brightness nudge. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `BLMPLimitCfg` | `0`, `2`, `3` | none | Stored and read back; 10 s windows, repeat at 45 s if in doubt. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `IOMFBBrightnessLevelMA` | `3.2q16` | none | Stored as 209715 and read back; brightness did not move, so the current target is not honoured. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `forcePixelBacklightModulation` | `0`, `1` | rejected | unsupported (0xe00002c7), same as `requestPixelBacklightModulation`. Pixel backlight modulation absent on this panel. |
+| 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `ModeBlm` | `1`, `2` | rejected | general error (0xe00002bc) on every write: read-only. |
+
+All MacBookPro18,1 rows are on macOS 26.6.2 (25G83). Full record: [reference/macbookpro18-1.md](reference/macbookpro18-1.md).

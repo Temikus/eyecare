@@ -7,6 +7,7 @@ differ by backlight architecture, not just by OS version.
 | machine | panel | node | `isHiloDevice` | macOS 27 dimming keys | record |
 |---|---|---|---|---|---|
 | Mac14,7 (MacBook Pro 13" M2) | IPS, 60 Hz, Touch Bar chassis | `disp0` | no | none published | [mac14-7.md](mac14-7.md) |
+| MacBookPro18,1 (MacBook Pro 16" M1 Pro) | mini-LED, 120 Hz ProMotion, 2D local dimming | `disp0` | not published | none published (26.6.2) | [macbookpro18-1.md](macbookpro18-1.md) |
 
 ## Adding a machine
 
