@@ -135,9 +135,20 @@ ccMinNitsConfig=0           → bad argument
 "the handler did not take this pair". With 81 of 82 published keys accepted and no unpublished key
 accepted, the working rule on this machine is that the settable set equals the published set.
 
-The other route to them is boot-time: each key also exists as an `iomfb_RuntimeProperty_<name>`
-string, which is the shape of a boot-arg name. That needs Permissive Security (SIP is enabled here,
-no boot-args set), so it is a separate, bigger experiment - and the hypothesis is unverified.
+The other route to them is boot-time. Each key also exists as an `iomfb_RuntimeProperty_<name>`
+string, and the DCP firmware (`/System/Volumes/Preboot/*/restore/Firmware/dcp/t600xdcp.im4p`, LZFSE
+payload after the `bvx2` magic, `compression_tool -decode -a lzfse`) contains
+`IOMobileFramebuffer::parse_RTP_boot_args()`, `IOMFB::get_RTP_boot_arg_name(RuntimeProperty)` and
+the log line "applying boot-arg RTP %s with value 0x%x returned 0x%x". So the firmware does read
+these names as boot-args. What is still untested is whether a boot-arg can enable a feature the
+panel configuration leaves off. With SIP on, `/chosen/allowed-boot-args` is a short whitelist
+(`trace, -v, -x, kperf, ...`) and nothing else reaches the DCP; Permissive Security is required.
+Both machines recorded so far have SIP enabled and no boot-args set.
+
+The same firmware strings explain two inert keys on the mini-LED: `enablePulseWidthMaximization`
+is paired with a calibration parameter `lMinPulseWidthMaximization` read from the panel's DBIN
+blob, which that panel does not carry; and `HBLDEnable` sits in the firmware's feature table, so
+HBLD is implemented but switched off for that panel.
 
 ## Method
 
@@ -192,5 +203,7 @@ Learned on the 16" mini-LED (MacBookPro18,1); see [reference/macbookpro18-1.md](
 | 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `IOMFBBrightnessLevelMA` | `3.2q16` | none | Stored as 209715 and read back; brightness did not move, so the current target is not honoured. |
 | 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `forcePixelBacklightModulation` | `0`, `1` | rejected | unsupported (0xe00002c7), same as `requestPixelBacklightModulation`. Pixel backlight modulation absent on this panel. |
 | 2026-09-21 | MacBookPro18,1 / 16" mini-LED | `ModeBlm` | `1`, `2` | rejected | general error (0xe00002bc) on every write: read-only. |
+| 2026-10-15 | MacBookPro18,1 / 16" mini-LED | `enableHBLD`, `HBLDDimmingFactorMin`, `HBLDNitsRRMax` | `true`/`1`, `0.5q16`/`1`, `100.0q16` | rejected | macOS 27.0.1. Unpublished; bad argument (0xe00002c2) for every type. |
+| 2026-10-15 | MacBookPro18,1 / 16" mini-LED | `ccMinNitsConfig`, `DBVValue`, `DBVInterval`, `enableDBTH` | `2.0q16`/`2`, `100`, `1`, `true`/`1` | rejected | macOS 27.0.1. Unpublished; bad argument for every type. |
 
-All MacBookPro18,1 rows are on macOS 26.6.2 (25G83). Full record: [reference/macbookpro18-1.md](reference/macbookpro18-1.md).
+MacBookPro18,1 rows dated 2026-09-21 are on macOS 26.6.2 (25G83), rows dated 2026-10-15 on 27.0.1 (26A434). Full record: [reference/macbookpro18-1.md](reference/macbookpro18-1.md).

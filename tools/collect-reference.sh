@@ -26,6 +26,18 @@ os="$(sw_vers -productVersion) ($(sw_vers -buildVersion)), Darwin $(uname -r)"
 slug=$(echo "$model" | tr 'A-Z,' 'a-z-')
 out="reference/$slug.md"
 
+# Everything above Notes is regenerated; Notes is written by hand and carried over from the
+# previous record so a rerun after an OS update does not discard it.
+notes="-"
+previous_probe=""
+if [ -f "$out" ]; then
+    notes=$(sed -n '/^## Notes$/,$p' "$out" | tail -n +3)
+    [ -n "$notes" ] || notes="-"
+    # A read-only rerun keeps the last probe result rather than replacing it with a placeholder.
+    previous_probe=$(sed -n '/^## Accepted writes$/,/^## Notes$/p' "$out" | sed '1,2d;$d' \
+        | grep -v '^Not recorded' | grep -v '^value unchanged' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+fi
+
 # Machine-wide backlight facts live on the backlight device node, not on AppleCLCD2.
 # ioreg dumps raw property data that is not valid UTF-8, so sed must run in the C locale
 # or it aborts with "RE error: illegal byte sequence".
@@ -145,6 +157,8 @@ if rejected:
     print()
     for r in rejected:
         print(f\"- \`{r['key']}\` - {r['detail'] or 'no detail'}\")"
+    elif [ -n "$previous_probe" ]; then
+        echo "$previous_probe"
     else
         echo "Not recorded. Run \`tools/collect-reference.sh --probe\` to rewrite each published"
         echo "value unchanged and record which keys the driver accepts."
@@ -152,7 +166,8 @@ if rejected:
     echo
     echo "## Notes"
     echo
-    echo "-"
-} > "$out"
+    echo "$notes"
+} > "$tmp/out.md"
+mv "$tmp/out.md" "$out"
 
 echo "wrote $out"
